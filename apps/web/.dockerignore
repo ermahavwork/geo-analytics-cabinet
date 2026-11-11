@@ -1,0 +1,5 @@
+node_modules
+.next
+test-results
+e2e
+.env*

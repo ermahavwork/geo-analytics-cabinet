@@ -1,0 +1,89 @@
+# Запуск: docker compose up --build
+# Все значения по умолчанию рассчитаны на локальную проверку и работают без .env.
+# Для реального развёртывания задайте свои секреты (см. .env.example).
+name: geo-cabinet
+
+x-api-image: &api-image
+  image: geo-cabinet-api
+  build: ./apps/api
+
+x-database-urls:
+  # Владелец БД: только для миграций. Приложению эти права не выдаются.
+  owner: &owner-url postgres://cabinet_owner:${DB_OWNER_PASSWORD:-owner-demo-password}@db:5432/cabinet
+  # Логин приложения: ограниченная роль под Row-Level Security.
+  app: &app-url postgres://cabinet_app:${DB_APP_PASSWORD:-app-demo-password}@db:5432/cabinet
+
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: cabinet_owner
+      POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD:-owner-demo-password}
+      POSTGRES_DB: cabinet
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      # Проверка по TCP: во время первичной инициализации сервер слушает только сокет.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U cabinet_owner -d cabinet"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  # Разовая подготовка базы: миграции, логин приложения, демо-данные.
+  migrate:
+    <<: *api-image
+    command: ["node", "dist/db/migrate.js"]
+    environment:
+      DATABASE_OWNER_URL: *owner-url
+      DATABASE_URL: *app-url
+      SEED_DEMO: ${SEED_DEMO:-true}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *api-image
+    environment:
+      DATABASE_URL: *app-url
+      # Пусто — API создаст случайный секрет при старте (вход сбросится при перезапуске).
+      JWT_SECRET: ${JWT_SECRET:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      REPORT_TIMEZONE: ${REPORT_TIMEZONE:-Europe/Moscow}
+      # Имитация внешнего геосервиса живёт в том же контейнере; кабинет ходит к ней по HTTP.
+      GEO_API_URL: ${GEO_API_URL:-http://127.0.0.1:4000/api/mock-geo/v1}
+      GEO_API_KEY: ${GEO_API_KEY:-demo-geo-key}
+      MOCK_GEO_FAIL_EVERY: ${MOCK_GEO_FAIL_EVERY:-4}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      # API слушает только localhost: наружу кабинет открыт через web.
+      - "127.0.0.1:${API_PORT:-4000}:4000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4000/api/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  web:
+    image: geo-cabinet-web
+    build: ./apps/web
+    environment:
+      API_URL: http://api:4000
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/login >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  db-data:

@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Golos Text Variable", system-ui, sans-serif;
+  --font-display: "Geologica Variable", "Golos Text Variable", sans-serif;
+
+  /* Палитра карты: бумага, суша, линия маршрута, метка. */
+  --color-canvas: #edf1ef;
+  --color-surface: #ffffff;
+  --color-ink: #15232d;
+  --color-muted: #586872;
+  --color-line: #d3dbd8;
+  --color-route: #2456c8;
+  --color-route-soft: #e7edfb;
+  --color-pin: #d8402f;
+  --color-up: #17764c;
+  --color-down: #b3371f;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* Единый видимый фокус для клавиатуры. */
+:focus-visible {
+  outline: 2px solid var(--color-route);
+  outline-offset: 2px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
