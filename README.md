@@ -1,5 +1,7 @@
 # Геокабинет — аналитика присутствия на геосервисах
 
+[![CI](https://github.com/ermahavwork/geo-analytics-cabinet/actions/workflows/ci.yml/badge.svg)](https://github.com/ermahavwork/geo-analytics-cabinet/actions/workflows/ci.yml)
+
 Кабинет для компаний с несколькими филиалами: сколько раз открывали карточки на картах, сколько было переходов на сайт, звонков и построенных маршрутов, какой рейтинг и что пишут в отзывах. Администратор видит все компании, клиент — только свою.
 
 Тестовое задание: минимальная рабочая версия аналитического кабинета. Стек — Next.js 16 и React 19, NestJS 12, PostgreSQL 18, TypeScript, Docker.
